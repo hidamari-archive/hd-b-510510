@@ -417,6 +417,77 @@
     from { opacity: 0; }
     to { opacity: 1; }
   }
+
+  /* ========== TOC VIEW ========== */
+  #tocView {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 96px 16px 60px;
+    display: none;
+    background: var(--bg);
+  }
+
+  .toc-row {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 7px 4px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+    transition: opacity 0.15s;
+  }
+  .toc-row:active { opacity: 0.6; }
+
+  .toc-chevron {
+    font-size: 9px; color: var(--accent);
+    width: 12px; text-align: center; flex-shrink: 0;
+    line-height: 1.5;
+  }
+
+  .toc-part-row {
+    font-size: 14px; font-weight: 600;
+    color: var(--accent); letter-spacing: 0.15em;
+    padding-top: 22px; padding-bottom: 2px;
+    border-top: 1px solid rgba(196,168,130,0.1);
+    margin-top: 4px;
+  }
+
+  .toc-intro-row {
+    font-size: 13px; color: var(--text-dim); letter-spacing: 0.14em;
+  }
+
+  .toc-chapter-row {
+    font-size: 13px; color: var(--text);
+    letter-spacing: 0.06em; padding-left: 16px;
+  }
+
+  .toc-chapter-sub {
+    font-size: 11px; color: var(--text-dim);
+    letter-spacing: 0.08em; padding: 0 4px 6px 36px;
+    line-height: 1.5;
+  }
+
+  .toc-section-row {
+    font-size: 12px; color: #645c52;
+    letter-spacing: 0.04em; padding-left: 32px;
+  }
+
+  .toc-content {
+    padding: 10px 14px 12px; margin-bottom: 4px;
+    background: #151210;
+    border-left: 1px solid rgba(196,168,130,0.15);
+    border-radius: 0 6px 6px 0;
+  }
+
+  .toc-content p {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 12px; line-height: 1.85;
+    color: #746c60; letter-spacing: 0.04em;
+    margin-bottom: 0.25em;
+  }
+
+  .toc-content .star-ornament, .toc-content .ma { display: none; }
+
+  #tocBtn { min-width: 60px; text-align: right; }
 </style>
 </head>
 <body>
@@ -446,12 +517,13 @@
   <div class="reader-header" id="readerHeader">
     <button class="reader-back" onclick="closeReader()">◁ 書架へ</button>
     <div class="reader-title-bar" id="readerTitleBar"></div>
-    <div style="width:60px"></div>
+    <button class="reader-back" id="tocBtn" onclick="toggleTOC()" style="display:none">目次</button>
   </div>
   <div class="reader-body" id="readerBody">
     <div class="reader-content" id="readerContent"></div>
   </div>
   <div class="scroll-hint" id="scrollHint">← 横にスクロール →</div>
+  <div id="tocView"></div>
 </div>
 
 <script>
@@ -540,10 +612,19 @@ function openBook(id) {
   if (!book) return;
 
   if (!book.text) {
-    // Show "coming soon" style message
     alert(`「${book.title}」の本文はまだ準備中です。\nセージに原稿テキストを渡してもらえたら、組み込みますね。`);
     return;
   }
+
+  // Reset TOC state
+  currentBookId = id;
+  tocParsed = null;
+  tocMode = false;
+  document.getElementById('readerBody').style.display = '';
+  document.getElementById('tocView').style.display = 'none';
+  const tocBtn = document.getElementById('tocBtn');
+  tocBtn.style.display = hasTOC(book.text) ? '' : 'none';
+  tocBtn.textContent = '目次';
 
   document.getElementById('readerTitleBar').textContent = book.title;
   document.getElementById('readerContent').innerHTML =
@@ -574,6 +655,134 @@ function openBook(id) {
 
 function closeReader() {
   document.getElementById('readerView').style.display = 'none';
+  tocMode = false;
+  document.getElementById('readerBody').style.display = '';
+  document.getElementById('tocView').style.display = 'none';
+}
+
+// ===== TOC =====
+let tocMode = false, currentBookId = null, tocParsed = null;
+
+function hasTOC(text) {
+  return /第[一二三四五六七八九十]+部/.test(text);
+}
+
+function parseTOC(htmlText) {
+  const wrap = document.createElement('div');
+  wrap.innerHTML = htmlText;
+  let seq = 0;
+  const mk = (type, title) => ({ id: ++seq, type, title, subtitle: '', content: '', children: [] });
+  const root = [];
+  let curPart = null, curChapter = null, curSection = null, buf = [];
+
+  const flush = () => {
+    const tgt = curSection || curChapter;
+    if (tgt) {
+      const html = buf.filter(p => {
+        const t = p.textContent.trim();
+        return t && t !== '✦';
+      }).map(p => p.outerHTML).join('');
+      if (html) tgt.content += html;
+    }
+    buf = [];
+  };
+
+  for (const p of wrap.querySelectorAll('p')) {
+    const t = p.textContent.trim();
+    if (!t || t === '✦' || t === '灯だまり文庫') continue;
+
+    if (t === 'はじめに') {
+      flush(); curSection = null;
+      const n = mk('intro', t); root.push(n);
+      curPart = null; curChapter = n;
+    } else if (t === 'ことばの辞書') {
+      flush(); curSection = null;
+      const n = mk('glossary', t); root.push(n);
+      curPart = null; curChapter = n;
+    } else if (/^第[一二三四五六七八九十]+部/.test(t)) {
+      flush(); curSection = null;
+      const n = mk('part', t); root.push(n);
+      curPart = n; curChapter = null;
+    } else if (/^[一二三四五六七八九十]+、/.test(t) && t.length < 50) {
+      flush(); curSection = null;
+      const n = mk('chapter', t);
+      (curPart || { children: root }).children.push(n);
+      curChapter = n;
+    } else if (/^[-\u2500\u2014\u2013]{1,3}[\s\u3000]/.test(t) && curChapter?.type === 'chapter' && !curChapter.subtitle) {
+      curChapter.subtitle = t;
+    } else if (/^◇/.test(t) && t.length < 40) {
+      flush(); curSection = null;
+      const n = mk('section', t);
+      (curChapter || curPart || { children: root }).children.push(n);
+      curSection = n;
+    } else {
+      buf.push(p);
+    }
+  }
+  flush();
+  return root;
+}
+
+function renderTOCNodes(nodes) {
+  return nodes.map(n => {
+    const id = 'tn' + n.id;
+    const hasKids = n.children.length > 0;
+    const hasCont = n.content.length > 0;
+    const isExpandable = hasKids || hasCont;
+    const defaultOpen = n.type === 'part' || n.type === 'chapter';
+
+    const chevron = isExpandable
+      ? `<span class="toc-chevron" id="${id}c">${defaultOpen ? '▼' : '▶'}</span>`
+      : `<span class="toc-chevron"></span>`;
+
+    const rowClass = ({ part: 'toc-part-row', chapter: 'toc-chapter-row',
+      section: 'toc-section-row', intro: 'toc-intro-row', glossary: 'toc-intro-row' })[n.type] || '';
+    const onclick = isExpandable ? `onclick="tocToggle('${id}')"` : '';
+    const row = `<div class="toc-row ${rowClass}" ${onclick}>${chevron}<span>${n.title}</span></div>`;
+    const sub = n.subtitle ? `<div class="toc-chapter-sub">${n.subtitle}</div>` : '';
+
+    const cml = (n.type === 'section') ? '46px' : '18px';
+    const content = hasCont
+      ? `<div id="${id}x" class="toc-content" style="display:none; margin-left:${cml}">${n.content}</div>`
+      : '';
+    const kids = hasKids
+      ? `<div id="${id}k" style="display:${defaultOpen ? 'block' : 'none'}">${renderTOCNodes(n.children)}</div>`
+      : '';
+
+    return `<div>${row}${sub}${content}${kids}</div>`;
+  }).join('');
+}
+
+function tocToggle(id) {
+  const kEl = document.getElementById(id + 'k');
+  const xEl = document.getElementById(id + 'x');
+  const cEl = document.getElementById(id + 'c');
+  const primary = kEl || xEl;
+  if (!primary) return;
+  const opening = primary.style.display === 'none';
+  if (kEl) kEl.style.display = opening ? 'block' : 'none';
+  if (xEl) xEl.style.display = opening ? 'block' : 'none';
+  if (cEl) cEl.textContent = opening ? '▼' : '▶';
+}
+
+function toggleTOC() {
+  if (tocMode) {
+    document.getElementById('readerBody').style.display = '';
+    document.getElementById('tocView').style.display = 'none';
+    document.getElementById('tocBtn').textContent = '目次';
+    tocMode = false;
+  } else {
+    if (!tocParsed) {
+      const book = books.find(b => b.id === currentBookId);
+      if (!book) return;
+      tocParsed = parseTOC(book.text);
+    }
+    document.getElementById('tocView').innerHTML = renderTOCNodes(tocParsed);
+    document.getElementById('readerBody').style.display = 'none';
+    document.getElementById('tocView').style.display = 'block';
+    document.getElementById('tocBtn').textContent = '読む';
+    tocMode = true;
+  }
 }
 
 // Initial render if already authed
