@@ -367,6 +367,18 @@
     margin-bottom: 5px;
   }
 
+  .book-list-synopsis {
+    font-size: 11px;
+    color: #6a6058;
+    letter-spacing: 0.04em;
+    line-height: 1.75;
+    margin-bottom: 6px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
   .book-list-tags { display: flex; flex-wrap: wrap; gap: 4px; }
 
   .tag-chip {
@@ -762,6 +774,15 @@ async function loadBooks() {
     .sort((a, b) => a.name.localeCompare(b.name));
   books = await Promise.all(jsonFiles.map(f => fetch(f.download_url).then(r => r.json())));
 
+  // あらすじを読み込んで合流
+  try {
+    const synRes = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/stories/synopses.json`);
+    if (synRes.ok) {
+      const synMap = await synRes.json();
+      books.forEach(b => { if (synMap[String(b.id)]) b.synopsis = synMap[String(b.id)]; });
+    }
+  } catch(e) {}
+
   // Supabase からタグを読み込んで合流
   const { data } = await db.from('bunko_tags').select('story_id, tags');
   if (data) data.forEach(row => { tagMap[row.story_id] = row.tags || []; });
@@ -853,6 +874,7 @@ function renderShelf() {
         <div class="book-list-body">
           <div class="book-list-title">${book.title}</div>
           <div class="book-list-meta">${isEssay(book) ? '解説書' : '第'+book.ch+'章'} ・ ${book.date}</div>
+          ${book.synopsis ? `<div class="book-list-synopsis">${book.synopsis}</div>` : ''}
           ${book.tags && book.tags.length ? `<div class="book-list-tags">${book.tags.map(t => `<span class="tag-chip">#${t}</span>`).join('')}</div>` : ''}
         </div>
         <button class="tag-edit-btn-list" onclick="event.stopPropagation();openTagModal(${book.id})">🏷</button>
