@@ -125,6 +125,31 @@
     background: rgba(196,168,130,0.1);
   }
 
+  .pw-frame {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 44px 36px 36px;
+    position: relative;
+    width: min(300px, 88vw);
+    border: 1px solid var(--accent);
+  }
+  .pw-frame::before {
+    content: '';
+    position: absolute;
+    inset: 7px;
+    border: 0.5px solid var(--accent);
+    opacity: 0.35;
+    pointer-events: none;
+  }
+  .pw-ornament {
+    font-size: 13px;
+    color: var(--accent);
+    opacity: 0.5;
+    letter-spacing: 0.5em;
+  }
+
   /* ========== SHELF VIEW ========== */
   #shelfView { display: none; }
 
@@ -139,6 +164,10 @@
     letter-spacing: 0.12em;
     color: var(--text);
     line-height: 1.4;
+  }
+
+  body.light .header h1 {
+    color: var(--accent);
   }
 
   .header .subtitle {
@@ -698,11 +727,15 @@
 
 <!-- ===== PASSWORD ===== -->
 <div id="passwordScreen">
-  <div class="lock-star">✦</div>
-  <h2>灯だまり文庫</h2>
-  <input type="password" id="pwInput" placeholder="あいことば" autocomplete="off">
-  <div class="pw-error" id="pwError">ちがうみたい……</div>
-  <button onclick="checkPassword()">ひらく</button>
+  <div class="pw-frame">
+    <div class="pw-ornament">◇ ✦ ◇</div>
+    <div class="lock-star" style="margin-bottom:0">✦</div>
+    <h2>灯だまり文庫</h2>
+    <div class="pw-ornament">── ── ──</div>
+    <input type="password" id="pwInput" placeholder="あいことば" autocomplete="off">
+    <div class="pw-error" id="pwError">ちがうみたい……</div>
+    <button onclick="checkPassword()">ひらく</button>
+  </div>
 </div>
 
 <!-- ===== SHELF ===== -->
@@ -1194,10 +1227,10 @@ function toggleTheme() {
   setTheme(!document.body.classList.contains('light'));
 }
 
-// テーマを復元
+// テーマを復元（ライトがデフォルト）
 (function() {
   const saved = localStorage.getItem('hidamari_theme');
-  if (saved === 'light') setTheme(true);
+  if (saved !== 'dark') setTheme(true);
 })();
 
 // Initial render if already authed
