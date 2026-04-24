@@ -793,13 +793,14 @@
     <div class="pw-error" id="pwError">ちがうみたい……</div>
     <button onclick="checkPassword()">ひらく</button>
   </div>
+  <div style="margin-top:28px;font-size:10px;color:rgba(196,168,130,0.35);letter-spacing:0.2em">🕯 灯だまり工房</div>
 </div>
 
 <!-- ===== SHELF ===== -->
 <div id="shelfView">
   <div class="header">
     <h1>灯だまり文庫</h1>
-    <div class="subtitle">ことは ＆ セージ</div>
+    <div class="subtitle">ことは ＆ セージ　／　🕯 灯だまり工房</div>
     <div class="header-row">
       <div class="count" id="bookCount"></div>
       <div style="display:flex;gap:8px">
@@ -1148,9 +1149,10 @@ function renderBulkList() {
     .map(b => `
       <div class="bulk-story-row" onclick="toggleBulk(${b.id})">
         <div class="bulk-checkbox ${bulkChecked.has(b.id) ? 'checked' : ''}">${bulkChecked.has(b.id) ? '✓' : ''}</div>
-        <div>
+        <div style="flex:1;min-width:0">
           <div style="font-size:14px;color:var(--text);letter-spacing:0.04em">${b.title}</div>
-          <div style="font-size:11px;color:var(--text-dim)">第${b.ch}章 ・ ${b.date}</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:2px">第${b.ch}章 ・ ${b.date}</div>
+          ${b.synopsis ? `<div style="font-size:10px;color:var(--text-dim);line-height:1.6;letter-spacing:0.03em;opacity:0.85">${b.synopsis}</div>` : ''}
         </div>
       </div>`
     ).join('');
