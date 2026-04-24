@@ -422,7 +422,7 @@
   }
 
   .book-list-synopsis {
-    font-size: 12.5px;
+    font-size: 13px;
     color: var(--text-dim);
     letter-spacing: 0.04em;
     line-height: 1.75;
@@ -729,6 +729,49 @@
   .tag-save-btn { background: rgba(196,168,130,0.12); border: 1px solid var(--accent); color: var(--accent); }
   .tag-cancel-btn { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
 
+  /* タグ候補（既存タグのサジェスト） */
+  .tag-suggest-row {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-bottom: 12px; min-height: 0;
+  }
+  .tag-suggest-chip {
+    font-size: 11px; padding: 3px 10px;
+    border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text-dim); cursor: pointer; letter-spacing: 0.06em;
+    transition: all 0.15s;
+  }
+  .tag-suggest-chip:active { opacity: 0.6; }
+
+  /* 一括タグ追加モーダル */
+  #bulkAddModal { position: fixed; inset: 0; z-index: 7500; display: none; }
+  #bulkAddBg { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
+  #bulkAddSheet {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: var(--bg-card); border-radius: 16px 16px 0 0;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+    max-height: 82vh; overflow-y: auto;
+  }
+  #bulkAddTitle {
+    font-size: 13px; color: var(--text-dim);
+    letter-spacing: 0.08em; margin-bottom: 16px; text-align: center;
+  }
+  .bulk-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 4px; border-bottom: 1px solid var(--border);
+    cursor: pointer; border-radius: 6px; transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bulk-item.sel { background: rgba(196,168,130,0.1); }
+  .bulk-swatch {
+    width: 28px; height: 40px; border-radius: 2px 4px 4px 2px;
+    flex-shrink: 0; box-shadow: 1px 1px 4px rgba(0,0,0,0.3);
+  }
+  .bulk-check {
+    font-size: 18px; color: var(--text-dim); flex-shrink: 0;
+    align-self: center; width: 24px; text-align: center; line-height: 1;
+  }
+  .bulk-item.sel .bulk-check { color: var(--accent); }
+
   /* ========== TAG SUGGESTIONS ========== */
   .tag-suggestions {
     display: flex; flex-wrap: wrap; gap: 6px;
@@ -779,6 +822,12 @@
     font-size: 11px; color: var(--accent); transition: all 0.15s;
   }
   .bulk-checkbox.checked { background: rgba(196,168,130,0.15); border-color: var(--accent); }
+
+  /* タグサジェスト行 */
+  .tag-suggestions {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-bottom: 12px;
+  }
 </style>
 </head>
 <body>
@@ -948,6 +997,8 @@ function renderShelf() {
   if (pickerTags.length > 0)
     detailHTML += `<button class="filter-btn${tagActive ? ' active' : ''}" onclick="${tagActive ? 'setDetailFilter(null)' : 'openTagPicker()'}">
       ${tagActive ? `#${currentDetailFilter} ×` : 'タグ ▾'}</button>`;
+  if (tagActive)
+    detailHTML += `<button class="filter-btn" onclick="openBulkTag('${currentDetailFilter}')" style="border-style:dashed">＋ お話を追加</button>`;
   const detailRow = document.getElementById('detailFilters');
   detailRow.innerHTML = detailHTML;
   detailRow.style.display = detailHTML ? 'flex' : 'none';
@@ -983,7 +1034,7 @@ function renderShelf() {
           <div class="book-list-title">${book.title}</div>
           <div class="book-list-meta">${isEssay(book) ? '解説書' : '第'+book.ch+'章'} ・ ${book.date}</div>
           ${book.synopsis ? `<div class="book-list-synopsis">${book.synopsis}</div>` : ''}
-          ${book.tags && book.tags.length ? `<div class="book-list-tags">${book.tags.map(t => `<span class="tag-chip">#${t}</span>`).join('')}</div>` : ''}
+          ${book.tags && book.tags.length ? `<div class="book-list-tags">${book.tags.map(t => `<span class="tag-chip" onclick="event.stopPropagation();setDetailFilter('${t}')" style="cursor:pointer">#${t}</span>`).join('')}</div>` : ''}
         </div>
         <button class="tag-edit-btn-list" onclick="event.stopPropagation();openTagModal(${book.id})">🏷</button>
       </div>
