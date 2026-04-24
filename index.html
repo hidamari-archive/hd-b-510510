@@ -787,7 +787,7 @@ async function loadBooks() {
   if (!res.ok) throw new Error('stories フォルダの取得に失敗しました');
   const files = await res.json();
   const jsonFiles = files
-    .filter(f => f.name.endsWith('.json'))
+    .filter(f => /^\d+\.json$/.test(f.name))
     .sort((a, b) => a.name.localeCompare(b.name));
   books = await Promise.all(jsonFiles.map(f => fetch(f.download_url).then(r => r.json())));
 
