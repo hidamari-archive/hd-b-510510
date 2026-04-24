@@ -56,6 +56,13 @@
 
   /* ========== PASSWORD SCREEN ========== */
   #passwordScreen {
+    --bg: #1a1a1a;
+    --bg-card: #252018;
+    --bg-input: #1a1510;
+    --text: #e8e0d6;
+    --text-dim: #8a8078;
+    --accent: #c4a882;
+    --border: #3a3530;
     position: fixed; top:0; left:0; right:0; bottom:0;
     background: var(--bg);
     display: flex; align-items: center; justify-content: center;
@@ -731,7 +738,6 @@
     <div class="pw-ornament">◇ ✦ ◇</div>
     <div class="lock-star" style="margin-bottom:0">✦</div>
     <h2>灯だまり文庫</h2>
-    <div class="pw-ornament">── ── ──</div>
     <input type="password" id="pwInput" placeholder="あいことば" autocomplete="off">
     <div class="pw-error" id="pwError">ちがうみたい……</div>
     <button onclick="checkPassword()">ひらく</button>
