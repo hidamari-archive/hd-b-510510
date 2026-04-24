@@ -589,6 +589,28 @@
 
   #tocBtn { min-width: 60px; text-align: right; }
 
+  /* ========== PICKER MODAL ========== */
+  #pickerModal { position: fixed; inset: 0; z-index: 6500; display: none; }
+  #pickerBg    { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
+  #pickerSheet {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: #252018; border-radius: 16px 16px 0 0;
+    padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
+    max-height: 55vh; overflow-y: auto;
+  }
+  #pickerTitle {
+    font-size: 11px; color: var(--text-dim); letter-spacing: 0.15em;
+    text-align: center; margin-bottom: 16px;
+  }
+  #pickerContent { display: flex; flex-wrap: wrap; gap: 10px; }
+  .picker-item {
+    font-family: 'Shippori Mincho', serif; font-size: 13px;
+    padding: 7px 16px; border: 1px solid #3a3530; border-radius: 8px;
+    background: transparent; color: var(--text-dim);
+    cursor: pointer; letter-spacing: 0.08em; transition: all 0.2s;
+  }
+  .picker-item.active { border-color: var(--accent); color: var(--accent); background: rgba(196,168,130,0.1); }
+
   /* ========== TAG EDIT ========== */
   .tag-edit-btn {
     background: none; border: none; font-size: 11px;
@@ -780,21 +802,23 @@ function renderShelf() {
     `<button class="type-btn ${currentTypeFilter === t.key ? 'active' : ''}" onclick="setTypeFilter(${t.key === null ? 'null' : `'${t.key}'`})">${t.label}</button>`
   ).join('');
 
-  // 詳細フィルタ（章 + タグ）
+  // ピッカー用データを更新
   const base = currentTypeFilter === 'essay' ? books.filter(isEssay)
              : currentTypeFilter === 'story'  ? books.filter(b => !isEssay(b))
              : books;
-  const chapters = [...new Set(base.filter(b => !isEssay(b)).map(b => b.ch))].sort((a,b) => a-b);
-  const allTags  = [...new Set(base.flatMap(b => b.tags || []))].sort();
+  pickerChapters = [...new Set(base.filter(b => !isEssay(b)).map(b => b.ch))].sort((a,b) => a-b);
+  pickerTags     = [...new Set(base.flatMap(b => b.tags || []))].sort();
+
+  // 詳細フィルタ（ピッカーボタン）
+  const chActive  = typeof currentDetailFilter === 'number';
+  const tagActive = typeof currentDetailFilter === 'string';
   let detailHTML = '';
-  if (chapters.length > 1)
-    detailHTML += chapters.map(ch =>
-      `<button class="filter-btn ${currentDetailFilter === ch ? 'active' : ''}" onclick="setDetailFilter(${ch})">第${ch}章</button>`
-    ).join('');
-  if (allTags.length > 0)
-    detailHTML += allTags.map(tag =>
-      `<button class="filter-btn ${currentDetailFilter === tag ? 'active' : ''}" onclick="setDetailFilter('${tag}')">#${tag}</button>`
-    ).join('');
+  if (pickerChapters.length > 1)
+    detailHTML += `<button class="filter-btn${chActive ? ' active' : ''}" onclick="${chActive ? 'setDetailFilter(null)' : 'openChapterPicker()'}">
+      ${chActive ? `第${currentDetailFilter}章 ×` : '章 ▾'}</button>`;
+  if (pickerTags.length > 0)
+    detailHTML += `<button class="filter-btn${tagActive ? ' active' : ''}" onclick="${tagActive ? 'setDetailFilter(null)' : 'openTagPicker()'}">
+      ${tagActive ? `#${currentDetailFilter} ×` : 'タグ ▾'}</button>`;
   const detailRow = document.getElementById('detailFilters');
   detailRow.innerHTML = detailHTML;
   detailRow.style.display = detailHTML ? 'flex' : 'none';
@@ -851,6 +875,31 @@ function setDetailFilter(val) {
 function toggleView() {
   currentView = currentView === 'grid' ? 'list' : 'grid';
   renderShelf();
+}
+
+// ===== PICKER MODAL =====
+let pickerChapters = [], pickerTags = [];
+
+function openChapterPicker() {
+  document.getElementById('pickerTitle').textContent = '章を選ぶ';
+  document.getElementById('pickerContent').innerHTML = pickerChapters.map(ch =>
+    `<button class="picker-item${currentDetailFilter === ch ? ' active' : ''}"
+      onclick="setDetailFilter(${ch});closePicker()">第${ch}章</button>`
+  ).join('');
+  document.getElementById('pickerModal').style.display = 'block';
+}
+
+function openTagPicker() {
+  document.getElementById('pickerTitle').textContent = 'タグで絞る';
+  document.getElementById('pickerContent').innerHTML = pickerTags.map(tag =>
+    `<button class="picker-item${currentDetailFilter === tag ? ' active' : ''}"
+      onclick="setDetailFilter('${tag}');closePicker()">#${tag}</button>`
+  ).join('');
+  document.getElementById('pickerModal').style.display = 'block';
+}
+
+function closePicker() {
+  document.getElementById('pickerModal').style.display = 'none';
 }
 
 // ===== TAG MODAL =====
@@ -910,9 +959,6 @@ async function saveTagEdit() {
   renderShelf();
 }
 
-document.getElementById('tagInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') addTagChip();
-});
 
 // ===== READER =====
 function openBook(id) {
@@ -1099,6 +1145,15 @@ if (sessionStorage.getItem('hidamari_auth') === '1') {
 }
 </script>
 
+<!-- ===== PICKER MODAL ===== -->
+<div id="pickerModal">
+  <div id="pickerBg" onclick="closePicker()"></div>
+  <div id="pickerSheet">
+    <div id="pickerTitle"></div>
+    <div id="pickerContent"></div>
+  </div>
+</div>
+
 <!-- ===== TAG MODAL ===== -->
 <div id="tagModal">
   <div id="tagModalBg" onclick="closeTagModal()"></div>
@@ -1106,7 +1161,7 @@ if (sessionStorage.getItem('hidamari_auth') === '1') {
     <div id="tagModalTitle"></div>
     <div class="tag-edit-chips" id="tagEditChips"></div>
     <div class="tag-input-row">
-      <input type="text" id="tagInput" placeholder="タグ名を入力">
+      <input type="text" id="tagInput" placeholder="タグ名を入力" onkeydown="if(event.key==='Enter')addTagChip()">
       <button id="tagAddBtn" onclick="addTagChip()">追加</button>
     </div>
     <div class="tag-modal-btns">
