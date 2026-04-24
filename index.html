@@ -15,14 +15,32 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+  /* ===== ダークテーマ（デフォルト）===== */
   :root {
     --bg: #1a1a1a;
     --bg-warm: #1e1a16;
+    --bg-card: #252018;
+    --bg-input: #1a1510;
     --text: #e8e0d6;
     --text-dim: #8a8078;
     --accent: #c4a882;
+    --border: #3a3530;
     --reading-bg: #f8f5f0;
     --reading-text: #2c2420;
+  }
+
+  /* ===== ライトテーマ（文庫本レトロ）===== */
+  body.light {
+    --bg: #f4edd8;
+    --bg-warm: #ece4c8;
+    --bg-card: #e6dcca;
+    --bg-input: #ddd4be;
+    --text: #2a1e0e;
+    --text-dim: #8a7050;
+    --accent: #7a5230;
+    --border: #c4aa84;
+    --reading-bg: #faf6ec;
+    --reading-text: #2a1e0e;
   }
 
   body {
@@ -66,9 +84,9 @@
     font-family: 'Shippori Mincho', serif;
     font-size: 16px;
     padding: 12px 20px;
-    border: 1px solid #3a3530;
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: #252018;
+    background: var(--bg-card);
     color: var(--text);
     text-align: center;
     width: 240px;
@@ -161,7 +179,7 @@
     font-family: 'Shippori Mincho', serif;
     font-size: 11px;
     padding: 4px 12px;
-    border: 1px solid #3a3530;
+    border: 1px solid var(--border);
     border-radius: 4px;
     background: transparent;
     color: var(--text-dim);
@@ -174,7 +192,7 @@
     font-family: 'Shippori Mincho', serif;
     font-size: 11px;
     padding: 5px 14px;
-    border: 1px solid #3a3530;
+    border: 1px solid var(--border);
     border-radius: 4px;
     background: transparent;
     color: var(--text-dim);
@@ -193,7 +211,7 @@
     font-family: 'Shippori Mincho', serif;
     font-size: 12px;
     padding: 6px 16px;
-    border: 1px solid #3a3530;
+    border: 1px solid var(--border);
     border-radius: 20px;
     background: transparent;
     color: var(--text-dim);
@@ -332,7 +350,7 @@
     align-items: flex-start;
     gap: 14px;
     padding: 14px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid var(--border);
     cursor: pointer;
     opacity: 0;
     animation: bookAppear 0.3s ease forwards;
@@ -369,14 +387,10 @@
 
   .book-list-synopsis {
     font-size: 11px;
-    color: #6a6058;
+    color: var(--text-dim);
     letter-spacing: 0.04em;
     line-height: 1.75;
     margin-bottom: 6px;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
   }
 
   .book-list-tags { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -606,7 +620,7 @@
   #pickerBg    { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
   #pickerSheet {
     position: absolute; bottom: 0; left: 0; right: 0;
-    background: #252018; border-radius: 16px 16px 0 0;
+    background: var(--bg-card); border-radius: 16px 16px 0 0;
     padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
     max-height: 55vh; overflow-y: auto;
   }
@@ -617,7 +631,7 @@
   #pickerContent { display: flex; flex-wrap: wrap; gap: 10px; }
   .picker-item {
     font-family: 'Shippori Mincho', serif; font-size: 13px;
-    padding: 7px 16px; border: 1px solid #3a3530; border-radius: 8px;
+    padding: 7px 16px; border: 1px solid var(--border); border-radius: 8px;
     background: transparent; color: var(--text-dim);
     cursor: pointer; letter-spacing: 0.08em; transition: all 0.2s;
   }
@@ -639,7 +653,7 @@
   #tagModalBg { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
   #tagModalSheet {
     position: absolute; bottom: 0; left: 0; right: 0;
-    background: #252018; border-radius: 16px 16px 0 0;
+    background: var(--bg-card); border-radius: 16px 16px 0 0;
     padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
   }
   #tagModalTitle {
@@ -660,8 +674,8 @@
   .tag-input-row { display: flex; gap: 8px; margin-bottom: 16px; }
   #tagInput {
     font-family: 'Shippori Mincho', serif; font-size: 14px;
-    flex: 1; padding: 8px 12px; background: #1a1510;
-    border: 1px solid #3a3530; border-radius: 8px;
+    flex: 1; padding: 8px 12px; background: var(--bg-input);
+    border: 1px solid var(--border); border-radius: 8px;
     color: var(--text); outline: none; letter-spacing: 0.06em;
   }
   #tagInput:focus { border-color: var(--accent); }
@@ -677,7 +691,7 @@
     cursor: pointer; letter-spacing: 0.1em;
   }
   .tag-save-btn { background: rgba(196,168,130,0.12); border: 1px solid var(--accent); color: var(--accent); }
-  .tag-cancel-btn { background: transparent; border: 1px solid #3a3530; color: var(--text-dim); }
+  .tag-cancel-btn { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
 </style>
 </head>
 <body>
@@ -698,7 +712,10 @@
     <div class="subtitle">ことは ＆ セージ</div>
     <div class="header-row">
       <div class="count" id="bookCount"></div>
-      <button class="view-toggle" id="viewToggle" onclick="toggleView()">☰ リスト</button>
+      <div style="display:flex;gap:8px">
+        <button class="view-toggle" id="themeToggle" onclick="toggleTheme()">☀</button>
+        <button class="view-toggle" id="viewToggle" onclick="toggleView()">☰ リスト</button>
+      </div>
     </div>
   </div>
   <div class="filters-wrap">
@@ -802,7 +819,7 @@ function getFilteredBooks() {
   else if (currentTypeFilter === 'essay') result = result.filter(b => isEssay(b));
   if (currentDetailFilter !== null) {
     if (typeof currentDetailFilter === 'number')
-      result = result.filter(b => b.ch === currentDetailFilter);
+      result = result.filter(b => isEssay(b) || b.ch === currentDetailFilter);
     else
       result = result.filter(b => b.tags && b.tags.includes(currentDetailFilter));
   }
@@ -1160,6 +1177,28 @@ function toggleTOC() {
     tocMode = true;
   }
 }
+
+// ===== THEME =====
+function setTheme(light) {
+  if (light) {
+    document.body.classList.add('light');
+    document.getElementById('themeToggle').textContent = '🌙';
+  } else {
+    document.body.classList.remove('light');
+    document.getElementById('themeToggle').textContent = '☀';
+  }
+  localStorage.setItem('hidamari_theme', light ? 'light' : 'dark');
+}
+
+function toggleTheme() {
+  setTheme(!document.body.classList.contains('light'));
+}
+
+// テーマを復元
+(function() {
+  const saved = localStorage.getItem('hidamari_theme');
+  if (saved === 'light') setTheme(true);
+})();
 
 // Initial render if already authed
 if (sessionStorage.getItem('hidamari_auth') === '1') {
