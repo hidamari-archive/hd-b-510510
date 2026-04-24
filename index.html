@@ -422,7 +422,7 @@
   }
 
   .book-list-synopsis {
-    font-size: 11px;
+    font-size: 12.5px;
     color: var(--text-dim);
     letter-spacing: 0.04em;
     line-height: 1.75;
@@ -728,6 +728,57 @@
   }
   .tag-save-btn { background: rgba(196,168,130,0.12); border: 1px solid var(--accent); color: var(--accent); }
   .tag-cancel-btn { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
+
+  /* ========== TAG SUGGESTIONS ========== */
+  .tag-suggestions {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-bottom: 12px; min-height: 0;
+  }
+  .tag-suggest-chip {
+    font-family: 'Shippori Mincho', serif; font-size: 12px;
+    padding: 3px 10px; border: 1px dashed var(--border);
+    border-radius: 10px; background: transparent;
+    color: var(--text-dim); cursor: pointer; letter-spacing: 0.06em;
+    transition: all 0.2s;
+  }
+  .tag-suggest-chip:active { border-color: var(--accent); color: var(--accent); }
+
+  .picker-edit-btn {
+    font-size: 15px; background: none; border: none;
+    color: var(--text-dim); cursor: pointer; padding: 6px 4px; opacity: 0.6;
+    flex-shrink: 0;
+  }
+
+  /* ========== BULK TAG MODAL ========== */
+  #bulkTagModal { position: fixed; inset: 0; z-index: 7500; display: none; }
+  #bulkTagBg { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
+  #bulkTagSheet {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: var(--bg-card); border-radius: 16px 16px 0 0;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+    max-height: 75vh; overflow-y: auto;
+  }
+  #bulkTagTitle {
+    font-size: 13px; color: var(--text-dim);
+    letter-spacing: 0.08em; margin-bottom: 4px; text-align: center;
+  }
+  #bulkTagSubtitle {
+    font-size: 11px; color: var(--text-dim); opacity: 0.6;
+    text-align: center; margin-bottom: 16px; letter-spacing: 0.06em;
+  }
+  .bulk-story-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 4px; border-bottom: 1px solid var(--border);
+    cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .bulk-story-row:active { opacity: 0.5; }
+  .bulk-checkbox {
+    width: 20px; height: 20px; flex-shrink: 0;
+    border: 1px solid var(--border); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--accent); transition: all 0.15s;
+  }
+  .bulk-checkbox.checked { background: rgba(196,168,130,0.15); border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -959,8 +1010,11 @@ function toggleView() {
 let pickerChapters = [], pickerTags = [];
 
 function openChapterPicker() {
+  const content = document.getElementById('pickerContent');
+  content.style.flexDirection = 'row';
+  content.style.flexWrap = 'wrap';
   document.getElementById('pickerTitle').textContent = '章を選ぶ';
-  document.getElementById('pickerContent').innerHTML = pickerChapters.map(ch =>
+  content.innerHTML = pickerChapters.map(ch =>
     `<button class="picker-item${currentDetailFilter === ch ? ' active' : ''}"
       onclick="setDetailFilter(${ch});closePicker()">第${ch}章</button>`
   ).join('');
@@ -969,11 +1023,24 @@ function openChapterPicker() {
 
 function openTagPicker() {
   document.getElementById('pickerTitle').textContent = 'タグで絞る';
-  document.getElementById('pickerContent').innerHTML = pickerTags.map(tag =>
-    `<button class="picker-item${currentDetailFilter === tag ? ' active' : ''}"
-      onclick="setDetailFilter('${tag}');closePicker()">#${tag}</button>`
-  ).join('');
+  const content = document.getElementById('pickerContent');
+  content.style.flexDirection = 'column';
+  content.style.flexWrap = 'nowrap';
+  content.innerHTML = pickerTags.map(tag => {
+    const t = tag.replace(/'/g, '&#39;');
+    return `<div style="display:flex;align-items:center;gap:6px">
+      <button class="picker-item${currentDetailFilter === tag ? ' active' : ''}" style="flex:1;text-align:left"
+        onclick="setDetailFilter('${t}');closePicker()">#${tag}</button>
+      <button class="picker-edit-btn" onclick="openBulkTag('${t}')">✎</button>
+    </div>`;
+  }).join('') || '<span style="font-size:12px;color:var(--text-dim)">タグがまだありません</span>';
   document.getElementById('pickerModal').style.display = 'block';
+}
+
+function openChapterPickerReset() {
+  const content = document.getElementById('pickerContent');
+  content.style.flexDirection = 'row';
+  content.style.flexWrap = 'wrap';
 }
 
 function closePicker() {
@@ -991,6 +1058,7 @@ function openTagModal(id) {
   editingTags = [...(book.tags || [])];
   document.getElementById('tagModalTitle').textContent = book.title;
   renderTagChips();
+  renderTagSuggestions();
   document.getElementById('tagInput').value = '';
   document.getElementById('tagModal').style.display = 'block';
 }
@@ -1001,6 +1069,27 @@ function renderTagChips() {
       <span>#${tag}</span><span class="rm">×</span>
     </div>`
   ).join('') || '<span style="font-size:11px;color:var(--text-dim);letter-spacing:0.08em">タグなし</span>';
+  renderTagSuggestions();
+}
+
+function getAllTags() {
+  return [...new Set(Object.values(tagMap).flat())].sort();
+}
+
+function renderTagSuggestions() {
+  const el = document.getElementById('tagSuggestions');
+  if (!el) return;
+  const suggestions = getAllTags().filter(t => !editingTags.includes(t));
+  el.innerHTML = suggestions.map(t =>
+    `<button class="tag-suggest-chip" onclick="applySuggestion('${t.replace(/'/g,"&#39;")}')">#${t}</button>`
+  ).join('');
+}
+
+function applySuggestion(tag) {
+  if (!editingTags.includes(tag)) {
+    editingTags.push(tag);
+    renderTagChips();
+  }
 }
 
 function addTagChip() {
@@ -1037,6 +1126,69 @@ async function saveTagEdit() {
   renderShelf();
 }
 
+
+// ===== BULK TAG =====
+let bulkTagName = '';
+let bulkChecked = new Set();
+
+function openBulkTag(tag) {
+  closePicker();
+  bulkTagName = tag;
+  bulkChecked = new Set(
+    books.filter(b => !isEssay(b) && b.tags && b.tags.includes(tag)).map(b => b.id)
+  );
+  document.getElementById('bulkTagTitle').textContent = `#${tag} をまとめて付ける`;
+  renderBulkList();
+  document.getElementById('bulkTagModal').style.display = 'block';
+}
+
+function renderBulkList() {
+  document.getElementById('bulkTagList').innerHTML = books
+    .filter(b => !isEssay(b))
+    .map(b => `
+      <div class="bulk-story-row" onclick="toggleBulk(${b.id})">
+        <div class="bulk-checkbox ${bulkChecked.has(b.id) ? 'checked' : ''}">${bulkChecked.has(b.id) ? '✓' : ''}</div>
+        <div>
+          <div style="font-size:14px;color:var(--text);letter-spacing:0.04em">${b.title}</div>
+          <div style="font-size:11px;color:var(--text-dim)">第${b.ch}章 ・ ${b.date}</div>
+        </div>
+      </div>`
+    ).join('');
+}
+
+function toggleBulk(id) {
+  if (bulkChecked.has(id)) bulkChecked.delete(id);
+  else bulkChecked.add(id);
+  renderBulkList();
+}
+
+function closeBulkTag() {
+  document.getElementById('bulkTagModal').style.display = 'none';
+}
+
+async function saveBulkTag() {
+  const updates = [];
+  books.filter(b => !isEssay(b)).forEach(b => {
+    const had = (b.tags || []).includes(bulkTagName);
+    const has = bulkChecked.has(b.id);
+    if (had === has) return;
+    const newTags = has
+      ? [...(b.tags || []), bulkTagName]
+      : (b.tags || []).filter(t => t !== bulkTagName);
+    updates.push({ story_id: b.id, tags: newTags });
+  });
+  if (updates.length) {
+    const { error } = await db.from('bunko_tags').upsert(updates, { onConflict: 'story_id' });
+    if (error) { alert('保存できませんでした……'); return; }
+    updates.forEach(u => {
+      tagMap[u.story_id] = u.tags;
+      const b = books.find(x => x.id === u.story_id);
+      if (b) b.tags = [...u.tags];
+    });
+  }
+  closeBulkTag();
+  renderShelf();
+}
 
 // ===== READER =====
 function openBook(id) {
@@ -1260,6 +1412,7 @@ if (sessionStorage.getItem('hidamari_auth') === '1') {
   <div id="tagModalSheet">
     <div id="tagModalTitle"></div>
     <div class="tag-edit-chips" id="tagEditChips"></div>
+    <div class="tag-suggestions" id="tagSuggestions"></div>
     <div class="tag-input-row">
       <input type="text" id="tagInput" placeholder="タグ名を入力" onkeydown="if(event.key==='Enter')addTagChip()">
       <button id="tagAddBtn" onclick="addTagChip()">追加</button>
@@ -1267,6 +1420,20 @@ if (sessionStorage.getItem('hidamari_auth') === '1') {
     <div class="tag-modal-btns">
       <button class="tag-cancel-btn" onclick="closeTagModal()">キャンセル</button>
       <button class="tag-save-btn" onclick="saveTagEdit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BULK TAG MODAL ===== -->
+<div id="bulkTagModal">
+  <div id="bulkTagBg" onclick="closeBulkTag()"></div>
+  <div id="bulkTagSheet">
+    <div id="bulkTagTitle"></div>
+    <div id="bulkTagSubtitle">タップで選択／解除</div>
+    <div id="bulkTagList"></div>
+    <div class="tag-modal-btns" style="margin-top:16px">
+      <button class="tag-cancel-btn" onclick="closeBulkTag()">キャンセル</button>
+      <button class="tag-save-btn" onclick="saveBulkTag()">保存</button>
     </div>
   </div>
 </div>
