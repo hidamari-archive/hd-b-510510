@@ -1051,6 +1051,7 @@ function setTypeFilter(type) {
 function setDetailFilter(val) {
   currentDetailFilter = currentDetailFilter === val ? null : val;
   renderShelf();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function toggleView() {
