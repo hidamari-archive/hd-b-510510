@@ -9,6 +9,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="apple-touch-icon.png">
 <title>灯だまり文庫</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700&display=swap');
 
@@ -135,15 +136,58 @@
     margin-top: 12px;
   }
 
-  .filters {
+  .filters-wrap {
+    padding: 0 20px 4px;
+  }
+
+  .filter-row {
     display: flex;
     gap: 8px;
-    padding: 0 20px 24px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    padding-bottom: 10px;
   }
-  .filters::-webkit-scrollbar { display: none; }
+  .filter-row::-webkit-scrollbar { display: none; }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+  }
+
+  .view-toggle {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 11px;
+    padding: 4px 12px;
+    border: 1px solid #3a3530;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    transition: all 0.3s;
+  }
+
+  .type-btn {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 11px;
+    padding: 5px 14px;
+    border: 1px solid #3a3530;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    white-space: nowrap;
+    letter-spacing: 0.12em;
+    transition: all 0.3s;
+  }
+  .type-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(196,168,130,0.12);
+  }
 
   .filter-btn {
     font-family: 'Shippori Mincho', serif;
@@ -276,6 +320,62 @@
     color: var(--text-dim);
     margin-top: 8px;
     letter-spacing: 0.08em;
+  }
+
+  /* ========== LIST VIEW ========== */
+  .book-list {
+    padding: 0 20px 60px;
+  }
+
+  .book-list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer;
+    opacity: 0;
+    animation: bookAppear 0.3s ease forwards;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .book-list-item:active { opacity: 0.5; }
+
+  .book-list-swatch {
+    width: 36px;
+    height: 52px;
+    border-radius: 3px 6px 6px 3px;
+    flex-shrink: 0;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.35);
+  }
+
+  .book-list-body { flex: 1; min-width: 0; }
+
+  .book-list-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+    margin-bottom: 4px;
+  }
+
+  .book-list-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    margin-bottom: 5px;
+  }
+
+  .book-list-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+  .tag-chip {
+    font-size: 10px;
+    padding: 2px 8px;
+    border: 1px solid rgba(196,168,130,0.3);
+    border-radius: 10px;
+    color: rgba(196,168,130,0.7);
+    letter-spacing: 0.06em;
   }
 
   /* ========== READER VIEW ========== */
@@ -488,6 +588,62 @@
   .toc-content .star-ornament, .toc-content .ma { display: none; }
 
   #tocBtn { min-width: 60px; text-align: right; }
+
+  /* ========== TAG EDIT ========== */
+  .tag-edit-btn {
+    background: none; border: none; font-size: 11px;
+    cursor: pointer; opacity: 0.45; padding: 0 0 0 6px;
+    vertical-align: middle; line-height: 1;
+  }
+  .tag-edit-btn-list {
+    background: none; border: none; font-size: 15px;
+    cursor: pointer; opacity: 0.35; padding: 0 2px;
+    flex-shrink: 0; align-self: center;
+  }
+
+  #tagModal { position: fixed; inset: 0; z-index: 7000; display: none; }
+  #tagModalBg { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
+  #tagModalSheet {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: #252018; border-radius: 16px 16px 0 0;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+  }
+  #tagModalTitle {
+    font-size: 13px; color: var(--text-dim);
+    letter-spacing: 0.08em; margin-bottom: 16px; text-align: center;
+  }
+  .tag-edit-chips {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    min-height: 28px; margin-bottom: 14px;
+  }
+  .tag-edit-chip {
+    font-size: 12px; padding: 4px 10px;
+    border: 1px solid rgba(196,168,130,0.4); border-radius: 12px;
+    color: rgba(196,168,130,0.9); letter-spacing: 0.06em;
+    display: flex; align-items: center; gap: 5px; cursor: pointer;
+  }
+  .tag-edit-chip .rm { color: #a09080; font-size: 11px; }
+  .tag-input-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  #tagInput {
+    font-family: 'Shippori Mincho', serif; font-size: 14px;
+    flex: 1; padding: 8px 12px; background: #1a1510;
+    border: 1px solid #3a3530; border-radius: 8px;
+    color: var(--text); outline: none; letter-spacing: 0.06em;
+  }
+  #tagInput:focus { border-color: var(--accent); }
+  #tagAddBtn {
+    font-family: 'Shippori Mincho', serif; font-size: 13px;
+    padding: 8px 14px; border: 1px solid var(--accent);
+    border-radius: 8px; background: transparent; color: var(--accent); cursor: pointer;
+  }
+  .tag-modal-btns { display: flex; gap: 10px; }
+  .tag-modal-btns button {
+    font-family: 'Shippori Mincho', serif; font-size: 13px;
+    flex: 1; padding: 10px; border-radius: 8px;
+    cursor: pointer; letter-spacing: 0.1em;
+  }
+  .tag-save-btn { background: rgba(196,168,130,0.12); border: 1px solid var(--accent); color: var(--accent); }
+  .tag-cancel-btn { background: transparent; border: 1px solid #3a3530; color: var(--text-dim); }
 </style>
 </head>
 <body>
@@ -506,10 +662,16 @@
   <div class="header">
     <h1>灯だまり文庫</h1>
     <div class="subtitle">ことは ＆ セージ</div>
-    <div class="count" id="bookCount"></div>
+    <div class="header-row">
+      <div class="count" id="bookCount"></div>
+      <button class="view-toggle" id="viewToggle" onclick="toggleView()">☰ リスト</button>
+    </div>
   </div>
-  <div class="filters" id="filters"></div>
-  <div class="book-grid" id="bookGrid"></div>
+  <div class="filters-wrap">
+    <div class="filter-row" id="typeFilters"></div>
+    <div class="filter-row" id="detailFilters"></div>
+  </div>
+  <div id="bookGrid"></div>
 </div>
 
 <!-- ===== READER ===== -->
@@ -557,12 +719,16 @@ if (sessionStorage.getItem('hidamari_auth') === '1') {
 }
 
 // ===== CONFIG =====
-// GitHubのユーザー名とリポジトリ名を設定してください
 const GITHUB_OWNER = 'hidamari-archive';
 const GITHUB_REPO  = 'hd-b-510510';
 
+const SUPABASE_URL = 'https://fypsfmrmxcgydpwkjhlc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_xFRv_2bAv5b8T0XGXQn7uQ_9ZfxrPy2';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 // ===== BOOK DATA =====
 let books = [];
+let tagMap = {}; // story_id -> string[]
 
 async function loadBooks() {
   const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/stories`;
@@ -573,38 +739,180 @@ async function loadBooks() {
     .filter(f => f.name.endsWith('.json'))
     .sort((a, b) => a.name.localeCompare(b.name));
   books = await Promise.all(jsonFiles.map(f => fetch(f.download_url).then(r => r.json())));
+
+  // Supabase からタグを読み込んで合流
+  const { data } = await db.from('bunko_tags').select('story_id, tags');
+  if (data) data.forEach(row => { tagMap[row.story_id] = row.tags || []; });
+  books.forEach(b => { b.tags = tagMap[b.id] || b.tags || []; });
 }
 
 // ===== SHELF =====
-let currentFilter = null;
+let currentTypeFilter = null;   // null=すべて, 'story', 'essay'
+let currentDetailFilter = null; // null=すべて, 章番号(number), タグ(string)
+let currentView = 'grid';       // 'grid' or 'list'
+
+function isEssay(b) { return b.type === 'essay' || b.id === 0; }
+
+function getFilteredBooks() {
+  let result = books;
+  if (currentTypeFilter === 'story') result = result.filter(b => !isEssay(b));
+  else if (currentTypeFilter === 'essay') result = result.filter(b => isEssay(b));
+  if (currentDetailFilter !== null) {
+    if (typeof currentDetailFilter === 'number')
+      result = result.filter(b => b.ch === currentDetailFilter);
+    else
+      result = result.filter(b => b.tags && b.tags.includes(currentDetailFilter));
+  }
+  return result;
+}
 
 function renderShelf() {
-  const filtered = currentFilter ? books.filter(b => b.ch === currentFilter) : books;
-  document.getElementById('bookCount').textContent = (currentFilter ? `第${currentFilter}章　` : '') + `${filtered.length} 冊`;
+  const filtered = getFilteredBooks();
+  document.getElementById('bookCount').textContent = `${filtered.length} 冊`;
 
-  const chapters = [...new Set(books.map(b => b.ch))].sort((a,b) => a-b);
-  document.getElementById('filters').innerHTML =
-    `<button class="filter-btn ${!currentFilter?'active':''}" onclick="setFilter(null)">すべて</button>` +
-    chapters.map(ch => `<button class="filter-btn ${currentFilter===ch?'active':''}" onclick="setFilter(${ch})">第${ch}章</button>`).join('');
+  // タイプフィルタ
+  const types = [
+    { key: null, label: 'すべて' },
+    { key: 'story', label: 'お話' },
+    { key: 'essay', label: '解説書' },
+  ];
+  document.getElementById('typeFilters').innerHTML = types.map(t =>
+    `<button class="type-btn ${currentTypeFilter === t.key ? 'active' : ''}" onclick="setTypeFilter(${t.key === null ? 'null' : `'${t.key}'`})">${t.label}</button>`
+  ).join('');
 
-  document.getElementById('bookGrid').innerHTML = filtered.map((book, i) => `
-    <div class="book-item" style="animation-delay:${i*0.05}s" onclick="openBook(${book.id})">
-      <div class="book-cover" style="background:linear-gradient(160deg,${book.colors[0]},${book.colors[1]})">
-        <div class="book-frame"></div>
-        <div class="book-frame-inner"></div>
-        <div class="book-diamond">◇ ✦ ◇</div>
-        <div class="book-title-text">${book.title}</div>
-        <div class="book-author-text">ことは ＆ セージ</div>
+  // 詳細フィルタ（章 + タグ）
+  const base = currentTypeFilter === 'essay' ? books.filter(isEssay)
+             : currentTypeFilter === 'story'  ? books.filter(b => !isEssay(b))
+             : books;
+  const chapters = [...new Set(base.filter(b => !isEssay(b)).map(b => b.ch))].sort((a,b) => a-b);
+  const allTags  = [...new Set(base.flatMap(b => b.tags || []))].sort();
+  let detailHTML = '';
+  if (chapters.length > 1)
+    detailHTML += chapters.map(ch =>
+      `<button class="filter-btn ${currentDetailFilter === ch ? 'active' : ''}" onclick="setDetailFilter(${ch})">第${ch}章</button>`
+    ).join('');
+  if (allTags.length > 0)
+    detailHTML += allTags.map(tag =>
+      `<button class="filter-btn ${currentDetailFilter === tag ? 'active' : ''}" onclick="setDetailFilter('${tag}')">#${tag}</button>`
+    ).join('');
+  const detailRow = document.getElementById('detailFilters');
+  detailRow.innerHTML = detailHTML;
+  detailRow.style.display = detailHTML ? 'flex' : 'none';
+
+  // ビュー切り替えボタンラベル
+  document.getElementById('viewToggle').textContent = currentView === 'grid' ? '☰ リスト' : '⊞ グリッド';
+
+  // 本の描画
+  const container = document.getElementById('bookGrid');
+  if (currentView === 'grid') {
+    container.className = 'book-grid';
+    container.innerHTML = filtered.map((book, i) => `
+      <div class="book-item" style="animation-delay:${i*0.05}s" onclick="openBook(${book.id})">
+        <div class="book-cover" style="background:linear-gradient(160deg,${book.colors[0]},${book.colors[1]})">
+          <div class="book-frame"></div>
+          <div class="book-frame-inner"></div>
+          <div class="book-diamond">◇ ✦ ◇</div>
+          <div class="book-title-text">${book.title}</div>
+          <div class="book-author-text">${isEssay(book) ? 'ことは' : 'ことは ＆ セージ'}</div>
+        </div>
+        <div class="book-meta-text">
+          ${isEssay(book) ? '解説書' : '第'+book.ch+'章'}${book.text ? '' : '　（準備中）'}
+          <button class="tag-edit-btn" onclick="event.stopPropagation();openTagModal(${book.id})">🏷</button>
+        </div>
       </div>
-      <div class="book-meta-text">第${book.ch}章${book.text ? '' : '　（準備中）'}</div>
-    </div>
-  `).join('');
+    `).join('');
+  } else {
+    container.className = 'book-list';
+    container.innerHTML = filtered.map((book, i) => `
+      <div class="book-list-item" style="animation-delay:${i*0.03}s" onclick="openBook(${book.id})">
+        <div class="book-list-swatch" style="background:linear-gradient(160deg,${book.colors[0]},${book.colors[1]})"></div>
+        <div class="book-list-body">
+          <div class="book-list-title">${book.title}</div>
+          <div class="book-list-meta">${isEssay(book) ? '解説書' : '第'+book.ch+'章'} ・ ${book.date}</div>
+          ${book.tags && book.tags.length ? `<div class="book-list-tags">${book.tags.map(t => `<span class="tag-chip">#${t}</span>`).join('')}</div>` : ''}
+        </div>
+        <button class="tag-edit-btn-list" onclick="event.stopPropagation();openTagModal(${book.id})">🏷</button>
+      </div>
+    `).join('');
+  }
 }
 
-function setFilter(ch) {
-  currentFilter = ch;
+function setTypeFilter(type) {
+  currentTypeFilter = type;
+  currentDetailFilter = null;
   renderShelf();
 }
+
+function setDetailFilter(val) {
+  currentDetailFilter = currentDetailFilter === val ? null : val;
+  renderShelf();
+}
+
+function toggleView() {
+  currentView = currentView === 'grid' ? 'list' : 'grid';
+  renderShelf();
+}
+
+// ===== TAG MODAL =====
+let editingBookId = null;
+let editingTags = [];
+
+function openTagModal(id) {
+  const book = books.find(b => b.id === id);
+  if (!book) return;
+  editingBookId = id;
+  editingTags = [...(book.tags || [])];
+  document.getElementById('tagModalTitle').textContent = book.title;
+  renderTagChips();
+  document.getElementById('tagInput').value = '';
+  document.getElementById('tagModal').style.display = 'block';
+}
+
+function renderTagChips() {
+  document.getElementById('tagEditChips').innerHTML = editingTags.map((tag, i) =>
+    `<div class="tag-edit-chip" onclick="removeTagChip(${i})">
+      <span>#${tag}</span><span class="rm">×</span>
+    </div>`
+  ).join('') || '<span style="font-size:11px;color:var(--text-dim);letter-spacing:0.08em">タグなし</span>';
+}
+
+function addTagChip() {
+  const input = document.getElementById('tagInput');
+  const val = input.value.trim().replace(/^#/, '');
+  if (val && !editingTags.includes(val)) {
+    editingTags.push(val);
+    renderTagChips();
+  }
+  input.value = '';
+  input.focus();
+}
+
+function removeTagChip(i) {
+  editingTags.splice(i, 1);
+  renderTagChips();
+}
+
+function closeTagModal() {
+  document.getElementById('tagModal').style.display = 'none';
+  editingBookId = null;
+  editingTags = [];
+}
+
+async function saveTagEdit() {
+  if (editingBookId === null) return;
+  const { error } = await db.from('bunko_tags')
+    .upsert({ story_id: editingBookId, tags: editingTags }, { onConflict: 'story_id' });
+  if (error) { alert('保存できませんでした……'); return; }
+  tagMap[editingBookId] = editingTags;
+  const book = books.find(b => b.id === editingBookId);
+  if (book) book.tags = [...editingTags];
+  closeTagModal();
+  renderShelf();
+}
+
+document.getElementById('tagInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addTagChip();
+});
 
 // ===== READER =====
 function openBook(id) {
@@ -629,7 +937,7 @@ function openBook(id) {
   document.getElementById('readerTitleBar').textContent = book.title;
   document.getElementById('readerContent').innerHTML =
     `<div class="story-title">${book.title}</div>` +
-    `<div class="series-label">ふたりの生活譚　ちいさなおはなし</div>` +
+    `<div class="series-label">${isEssay(book) ? '灯だまり文庫' : 'ふたりの生活譚　ちいさなおはなし'}</div>` +
     book.text;
 
   document.getElementById('readerView').style.display = 'block';
@@ -790,6 +1098,23 @@ if (sessionStorage.getItem('hidamari_auth') === '1') {
   loadBooks().then(() => renderShelf());
 }
 </script>
+
+<!-- ===== TAG MODAL ===== -->
+<div id="tagModal">
+  <div id="tagModalBg" onclick="closeTagModal()"></div>
+  <div id="tagModalSheet">
+    <div id="tagModalTitle"></div>
+    <div class="tag-edit-chips" id="tagEditChips"></div>
+    <div class="tag-input-row">
+      <input type="text" id="tagInput" placeholder="タグ名を入力">
+      <button id="tagAddBtn" onclick="addTagChip()">追加</button>
+    </div>
+    <div class="tag-modal-btns">
+      <button class="tag-cancel-btn" onclick="closeTagModal()">キャンセル</button>
+      <button class="tag-save-btn" onclick="saveTagEdit()">保存</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
