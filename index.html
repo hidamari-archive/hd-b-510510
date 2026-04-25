@@ -823,6 +823,24 @@
   }
   .bulk-checkbox.checked { background: rgba(196,168,130,0.15); border-color: var(--accent); }
 
+  /* ========== SEARCH ========== */
+  .search-row { padding: 0 0 10px; position: relative; }
+  .search-input {
+    font-family: 'Shippori Mincho', serif; font-size: 14px;
+    width: 100%; padding: 9px 36px 9px 14px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); outline: none;
+    letter-spacing: 0.04em; transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text-dim); }
+  .search-clear {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-58%);
+    background: none; border: none; font-size: 15px;
+    color: var(--text-dim); cursor: pointer; padding: 4px; display: none;
+  }
+
   /* タグサジェスト行 */
   .tag-suggestions {
     display: flex; flex-wrap: wrap; gap: 6px;
@@ -852,13 +870,20 @@
     <div class="subtitle">ことは ＆ セージ　／　🕯 灯だまり工房</div>
     <div class="header-row">
       <div class="count" id="bookCount"></div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:6px">
         <button class="view-toggle" id="themeToggle" onclick="toggleTheme()">☀</button>
+        <button class="view-toggle" id="sortToggle" onclick="toggleSort()">↓新</button>
+        <button class="view-toggle" onclick="openRandomBook()" title="ランダムに開く">✦</button>
         <button class="view-toggle" id="viewToggle" onclick="toggleView()">☰ リスト</button>
       </div>
     </div>
   </div>
   <div class="filters-wrap">
+    <div class="search-row">
+      <input type="search" id="searchInput" class="search-input"
+        placeholder="タイトル・あらすじで検索" oninput="onSearchInput(this.value)">
+      <button class="search-clear" id="searchClear" onclick="clearSearch()">×</button>
+    </div>
     <div class="filter-row" id="typeFilters"></div>
     <div class="filter-row" id="detailFilters"></div>
   </div>
@@ -950,11 +975,13 @@ async function loadBooks() {
 let currentTypeFilter = null;   // null=すべて, 'story', 'essay'
 let currentDetailFilter = null; // null=すべて, 章番号(number), タグ(string)
 let currentView = 'grid';       // 'grid' or 'list'
+let sortDesc = true;            // true=新しい順(ch降順), false=古い順(ch昇順)
+let searchQuery = '';
 
 function isEssay(b) { return b.type === 'essay' || b.id === 0; }
 
 function getFilteredBooks() {
-  let result = books;
+  let result = [...books];
   if (currentTypeFilter === 'story') result = result.filter(b => !isEssay(b));
   else if (currentTypeFilter === 'essay') result = result.filter(b => isEssay(b));
   if (currentDetailFilter !== null) {
@@ -963,7 +990,43 @@ function getFilteredBooks() {
     else
       result = result.filter(b => b.tags && b.tags.includes(currentDetailFilter));
   }
+  if (searchQuery) {
+    const q = searchQuery;
+    result = result.filter(b =>
+      b.title.includes(q) || (b.synopsis && b.synopsis.includes(q))
+    );
+  }
+  result.sort((a, b) => sortDesc ? (b.ch || 0) - (a.ch || 0) : (a.ch || 0) - (b.ch || 0));
   return result;
+}
+
+function onSearchInput(val) {
+  searchQuery = val;
+  const cl = document.getElementById('searchClear');
+  if (cl) cl.style.display = val ? 'block' : 'none';
+  renderShelf();
+}
+
+function clearSearch() {
+  searchQuery = '';
+  const el = document.getElementById('searchInput');
+  if (el) el.value = '';
+  const cl = document.getElementById('searchClear');
+  if (cl) cl.style.display = 'none';
+  renderShelf();
+}
+
+function toggleSort() {
+  sortDesc = !sortDesc;
+  document.getElementById('sortToggle').textContent = sortDesc ? '↓新' : '↑古';
+  renderShelf();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function openRandomBook() {
+  const candidates = getFilteredBooks().filter(b => !isEssay(b) && b.text);
+  if (!candidates.length) return;
+  openBook(candidates[Math.floor(Math.random() * candidates.length)].id);
 }
 
 function renderShelf() {
