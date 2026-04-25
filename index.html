@@ -1062,6 +1062,9 @@ function renderShelf() {
       ${tagActive ? `#${currentDetailFilter} ×` : 'タグ ▾'}</button>`;
   if (tagActive)
     detailHTML += `<button class="filter-btn" onclick="openBulkTag('${currentDetailFilter}')" style="border-style:dashed">＋ お話を追加</button>`;
+  const searchStories = filtered.filter(b => !isEssay(b));
+  if (searchQuery && searchStories.length > 0)
+    detailHTML += `<button class="filter-btn" onclick="openSearchBulkTag()" style="border-style:dashed">🏷 ${searchStories.length}件にタグ付け</button>`;
   const detailRow = document.getElementById('detailFilters');
   detailRow.innerHTML = detailHTML;
   detailRow.style.display = detailHTML ? 'flex' : 'none';
@@ -1246,53 +1249,86 @@ async function saveTagEdit() {
 // ===== BULK TAG =====
 let bulkTagName = '';
 let bulkChecked = new Set();
+let bulkCandidates = null; // null=全お話, array=検索モード時の対象リスト
 
 function openBulkTag(tag) {
   closePicker();
   bulkTagName = tag;
+  bulkCandidates = null;
   bulkChecked = new Set(
     books.filter(b => !isEssay(b) && b.tags && b.tags.includes(tag)).map(b => b.id)
   );
   document.getElementById('bulkTagTitle').textContent = `#${tag} をまとめて付ける`;
+  document.getElementById('bulkTagSubtitle').textContent = 'タップで選択／解除';
+  document.getElementById('bulkTagInputRow').style.display = 'none';
   renderBulkList();
   document.getElementById('bulkTagModal').style.display = 'block';
 }
 
-function renderBulkList() {
-  document.getElementById('bulkTagList').innerHTML = books
-    .filter(b => !isEssay(b))
-    .map(b => `
-      <div class="bulk-story-row" onclick="toggleBulk(${b.id})">
-        <div class="bulk-checkbox ${bulkChecked.has(b.id) ? 'checked' : ''}">${bulkChecked.has(b.id) ? '✓' : ''}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;color:var(--text);letter-spacing:0.04em">${b.title}</div>
-          <div style="font-size:10px;color:var(--text-dim);margin-bottom:2px">第${b.ch}章 ・ ${b.date}</div>
-          ${b.synopsis ? `<div style="font-size:10px;color:var(--text-dim);line-height:1.6;letter-spacing:0.03em;opacity:0.85">${b.synopsis}</div>` : ''}
-        </div>
-      </div>`
-    ).join('');
+function openSearchBulkTag() {
+  const candidates = getFilteredBooks().filter(b => !isEssay(b));
+  if (!candidates.length) return;
+  bulkCandidates = candidates;
+  bulkChecked = new Set(candidates.map(b => b.id)); // 全選択
+  document.getElementById('bulkTagTitle').textContent = '検索結果にタグを付ける';
+  document.getElementById('bulkTagSubtitle').textContent = 'タップで選択／解除';
+  const inputRow = document.getElementById('bulkTagInputRow');
+  inputRow.style.display = 'block';
+  const tagInput = document.getElementById('bulkTagInput');
+  tagInput.value = searchQuery;
+  tagInput.focus();
+  renderBulkList(candidates);
+  document.getElementById('bulkTagModal').style.display = 'block';
+}
+
+function renderBulkList(list) {
+  const items = list || books.filter(b => !isEssay(b));
+  document.getElementById('bulkTagList').innerHTML = items.map(b => `
+    <div class="bulk-story-row" onclick="toggleBulk(${b.id})">
+      <div class="bulk-checkbox ${bulkChecked.has(b.id) ? 'checked' : ''}">${bulkChecked.has(b.id) ? '✓' : ''}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;color:var(--text);letter-spacing:0.04em">${b.title}</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-bottom:2px">第${b.ch}章 ・ ${b.date}</div>
+        ${b.synopsis ? `<div style="font-size:10px;color:var(--text-dim);line-height:1.6;letter-spacing:0.03em;opacity:0.85">${b.synopsis}</div>` : ''}
+      </div>
+    </div>`
+  ).join('');
 }
 
 function toggleBulk(id) {
   if (bulkChecked.has(id)) bulkChecked.delete(id);
   else bulkChecked.add(id);
-  renderBulkList();
+  renderBulkList(bulkCandidates);
 }
 
 function closeBulkTag() {
   document.getElementById('bulkTagModal').style.display = 'none';
+  bulkCandidates = null;
 }
 
 async function saveBulkTag() {
+  const isSearchMode = bulkCandidates !== null;
+  let tagToSave = bulkTagName;
+  if (isSearchMode) {
+    tagToSave = document.getElementById('bulkTagInput').value.trim().replace(/^#/, '');
+    if (!tagToSave) { alert('タグ名を入力してください'); return; }
+  }
+
+  const base = isSearchMode ? bulkCandidates : books.filter(b => !isEssay(b));
   const updates = [];
-  books.filter(b => !isEssay(b)).forEach(b => {
-    const had = (b.tags || []).includes(bulkTagName);
+  base.forEach(b => {
+    const had = (b.tags || []).includes(tagToSave);
     const has = bulkChecked.has(b.id);
-    if (had === has) return;
-    const newTags = has
-      ? [...(b.tags || []), bulkTagName]
-      : (b.tags || []).filter(t => t !== bulkTagName);
-    updates.push({ story_id: b.id, tags: newTags });
+    if (isSearchMode) {
+      // 検索モード：チェックされているものだけ追加（削除はしない）
+      if (has && !had) updates.push({ story_id: b.id, tags: [...(b.tags || []), tagToSave] });
+    } else {
+      if (had === has) return;
+      const newTags = has
+        ? [...(b.tags || []), tagToSave]
+        : (b.tags || []).filter(t => t !== tagToSave);
+      updates.push({ story_id: b.id, tags: newTags });
+    }
   });
   if (updates.length) {
     const { error } = await db.from('bunko_tags').upsert(updates, { onConflict: 'story_id' });
@@ -1547,6 +1583,9 @@ if (sessionStorage.getItem('hidamari_auth') === '1') {
   <div id="bulkTagSheet">
     <div id="bulkTagTitle"></div>
     <div id="bulkTagSubtitle">タップで選択／解除</div>
+    <div id="bulkTagInputRow" style="display:none;margin-bottom:14px">
+      <input id="bulkTagInput" class="search-input" placeholder="タグ名（新規作成も可）">
+    </div>
     <div id="bulkTagList"></div>
     <div class="tag-modal-btns" style="margin-top:16px">
       <button class="tag-cancel-btn" onclick="closeBulkTag()">キャンセル</button>
