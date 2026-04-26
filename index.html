@@ -555,6 +555,15 @@
     text-align: center;
   }
 
+  .reader-content .sp-chapter {
+    font-family: var(--font-accent);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-align: center;
+    margin: 1em 0;
+  }
+
   /* Scroll indicator */
   .scroll-hint {
     position: fixed;
@@ -952,7 +961,7 @@ async function loadBooks() {
   if (!res.ok) throw new Error('stories フォルダの取得に失敗しました');
   const files = await res.json();
   const jsonFiles = files
-    .filter(f => /^\d+\.json$/.test(f.name))
+    .filter(f => /^\d+\.json$/.test(f.name) || /^SP\d\d\.json$/.test(f.name))
     .sort((a, b) => a.name.localeCompare(b.name));
   books = await Promise.all(jsonFiles.map(f => fetch(f.download_url).then(r => r.json())));
 
@@ -979,11 +988,13 @@ let sortDesc = true;            // true=新しい順(ch降順), false=古い順(
 let searchQuery = '';
 
 function isEssay(b) { return b.type === 'essay' || b.id === 0; }
+function isSpecial(b) { return b.type === 'special'; }
 
 function getFilteredBooks() {
   let result = [...books];
-  if (currentTypeFilter === 'story') result = result.filter(b => !isEssay(b));
-  else if (currentTypeFilter === 'essay') result = result.filter(b => isEssay(b));
+  if (currentTypeFilter === 'story')   result = result.filter(b => !isEssay(b) && !isSpecial(b));
+  else if (currentTypeFilter === 'essay')   result = result.filter(b => isEssay(b));
+  else if (currentTypeFilter === 'special') result = result.filter(b => isSpecial(b));
   if (currentDetailFilter !== null) {
     if (typeof currentDetailFilter === 'number')
       result = result.filter(b => isEssay(b) || b.ch === currentDetailFilter);
@@ -1024,7 +1035,7 @@ function toggleSort() {
 }
 
 function openRandomBook() {
-  const candidates = getFilteredBooks().filter(b => !isEssay(b) && b.text);
+  const candidates = getFilteredBooks().filter(b => !isEssay(b) && !isSpecial(b) && b.text);
   if (!candidates.length) return;
   openBook(candidates[Math.floor(Math.random() * candidates.length)].id);
 }
@@ -1035,19 +1046,21 @@ function renderShelf() {
 
   // タイプフィルタ
   const types = [
-    { key: null, label: 'すべて' },
-    { key: 'story', label: 'お話' },
-    { key: 'essay', label: '解説書' },
+    { key: null,      label: 'すべて' },
+    { key: 'story',   label: 'お話' },
+    { key: 'essay',   label: '解説書' },
+    { key: 'special', label: '特別編' },
   ];
   document.getElementById('typeFilters').innerHTML = types.map(t =>
     `<button class="type-btn ${currentTypeFilter === t.key ? 'active' : ''}" onclick="setTypeFilter(${t.key === null ? 'null' : `'${t.key}'`})">${t.label}</button>`
   ).join('');
 
   // ピッカー用データを更新
-  const base = currentTypeFilter === 'essay' ? books.filter(isEssay)
-             : currentTypeFilter === 'story'  ? books.filter(b => !isEssay(b))
+  const base = currentTypeFilter === 'essay'   ? books.filter(isEssay)
+             : currentTypeFilter === 'story'   ? books.filter(b => !isEssay(b) && !isSpecial(b))
+             : currentTypeFilter === 'special' ? books.filter(isSpecial)
              : books;
-  pickerChapters = [...new Set(base.filter(b => !isEssay(b)).map(b => b.ch))].sort((a,b) => a-b);
+  pickerChapters = [...new Set(base.filter(b => !isEssay(b) && !isSpecial(b)).map(b => b.ch))].sort((a,b) => a-b);
   pickerTags     = [...new Set(base.flatMap(b => b.tags || []))].sort();
 
   // 詳細フィルタ（ピッカーボタン）
@@ -1077,7 +1090,7 @@ function renderShelf() {
   if (currentView === 'grid') {
     container.className = 'book-grid';
     container.innerHTML = filtered.map((book, i) => `
-      <div class="book-item" style="animation-delay:${i*0.05}s" onclick="openBook(${book.id})">
+      <div class="book-item" style="animation-delay:${i*0.05}s" onclick="openBook(${JSON.stringify(book.id)})">
         <div class="book-cover" style="background:linear-gradient(160deg,${book.colors[0]},${book.colors[1]})">
           <div class="book-frame"></div>
           <div class="book-frame-inner"></div>
@@ -1086,23 +1099,23 @@ function renderShelf() {
           <div class="book-author-text">${isEssay(book) ? 'ことは' : 'ことは ＆ セージ'}</div>
         </div>
         <div class="book-meta-text">
-          ${isEssay(book) ? '解説書' : '第'+book.ch+'章'}${book.text ? '' : '　（準備中）'}
-          <button class="tag-edit-btn" onclick="event.stopPropagation();openTagModal(${book.id})">🏷</button>
+          ${isEssay(book) ? '解説書' : isSpecial(book) ? '特別編' : '第'+book.ch+'章'}${(book.text || book.text_file) ? '' : '　（準備中）'}
+          <button class="tag-edit-btn" onclick="event.stopPropagation();openTagModal(${JSON.stringify(book.id)})">🏷</button>
         </div>
       </div>
     `).join('');
   } else {
     container.className = 'book-list';
     container.innerHTML = filtered.map((book, i) => `
-      <div class="book-list-item" style="animation-delay:${i*0.03}s" onclick="openBook(${book.id})">
+      <div class="book-list-item" style="animation-delay:${i*0.03}s" onclick="openBook(${JSON.stringify(book.id)})">
         <div class="book-list-swatch" style="background:linear-gradient(160deg,${book.colors[0]},${book.colors[1]})"></div>
         <div class="book-list-body">
           <div class="book-list-title">${book.title}</div>
-          <div class="book-list-meta">${isEssay(book) ? '解説書' : '第'+book.ch+'章'} ・ ${book.date}</div>
+          <div class="book-list-meta">${isEssay(book) ? '解説書' : isSpecial(book) ? '特別編' : '第'+book.ch+'章'} ・ ${book.date}</div>
           ${book.synopsis ? `<div class="book-list-synopsis">${book.synopsis}</div>` : ''}
           ${book.tags && book.tags.length ? `<div class="book-list-tags">${book.tags.map(t => `<span class="tag-chip" onclick="event.stopPropagation();setDetailFilter('${t}')" style="cursor:pointer">#${t}</span>`).join('')}</div>` : ''}
         </div>
-        <button class="tag-edit-btn-list" onclick="event.stopPropagation();openTagModal(${book.id})">🏷</button>
+        <button class="tag-edit-btn-list" onclick="event.stopPropagation();openTagModal(${JSON.stringify(book.id)})">🏷</button>
       </div>
     `).join('');
   }
@@ -1344,9 +1357,22 @@ async function saveBulkTag() {
 }
 
 // ===== READER =====
-function openBook(id) {
+async function openBook(id) {
   const book = books.find(b => b.id === id);
   if (!book) return;
+
+  // 特別編: text_file から遅延ロード（キャッシュ済みなら再利用）
+  if (!book.text && book.text_file) {
+    try {
+      const res = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/${book.text_file}`);
+      if (!res.ok) throw new Error();
+      const raw = await res.text();
+      book.text = plaintextToHtml(raw);
+    } catch(e) {
+      alert(`「${book.title}」の本文を読み込めませんでした。`);
+      return;
+    }
+  }
 
   if (!book.text) {
     alert(`「${book.title}」の本文はまだ準備中です。\nセージに原稿テキストを渡してもらえたら、組み込みますね。`);
@@ -1363,10 +1389,13 @@ function openBook(id) {
   tocBtn.style.display = hasTOC(book.text) ? '' : 'none';
   tocBtn.textContent = '目次';
 
+  const seriesLabel = isEssay(book) ? '灯だまり文庫'
+                    : isSpecial(book) ? '灯だまり文庫　特別編'
+                    : 'ふたりの生活譚　ちいさなおはなし';
   document.getElementById('readerTitleBar').textContent = book.title;
   document.getElementById('readerContent').innerHTML =
     `<div class="story-title">${book.title}</div>` +
-    `<div class="series-label">${isEssay(book) ? '灯だまり文庫' : 'ふたりの生活譚　ちいさなおはなし'}</div>` +
+    `<div class="series-label">${seriesLabel}</div>` +
     book.text;
 
   document.getElementById('readerView').style.display = 'block';
@@ -1388,6 +1417,49 @@ function openBook(id) {
     }, 1500);
     lastScroll = current;
   };
+}
+
+function plaintextToHtml(rawText) {
+  // ヘッダー3行（──, 灯だまり文庫　特別編, ── タイトル ──）をスキップ
+  const lines = rawText.split('\n').slice(3);
+  // 空行で段落を分割
+  const blocks = [];
+  let cur = [];
+  for (const line of lines) {
+    if (line.trim() === '') {
+      if (cur.length) { blocks.push(cur.join('\n')); cur = []; }
+    } else {
+      cur.push(line);
+    }
+  }
+  if (cur.length) blocks.push(cur.join('\n'));
+
+  const parts = [];
+  for (const block of blocks) {
+    const trimmed = block.trim();
+    if (!trimmed) continue;
+    // 章見出し: 全角スペース3個以上でインデントされた行
+    const leadingFull = (block.match(/^　+/) || [''])[0].length;
+    if (leadingFull >= 3) {
+      parts.push(`<p class="ma">　</p><p class="sp-chapter">${trimmed}</p><p class="ma">　</p>`);
+      continue;
+    }
+    // 区切り線・おしまい
+    if (/^──/.test(trimmed)) {
+      parts.push('<p class="star-ornament">✦</p>');
+      continue;
+    }
+    // 奥付
+    if (trimmed === '灯だまり文庫') {
+      parts.push('<p class="colophon">灯だまり文庫</p>');
+      continue;
+    }
+    // 通常段落（ブロック内の各行を個別の <p> に）
+    const subLines = block.split('\n');
+    const lineParts = subLines.map(l => l.trim()).filter(Boolean).map(l => `<p>${l}</p>`);
+    parts.push(lineParts.join('\n<p class="ma">　</p>\n'));
+  }
+  return parts.join('\n<p class="ma">　</p>\n');
 }
 
 function closeReader() {
