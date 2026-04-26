@@ -1090,7 +1090,7 @@ function renderShelf() {
   if (currentView === 'grid') {
     container.className = 'book-grid';
     container.innerHTML = filtered.map((book, i) => `
-      <div class="book-item" style="animation-delay:${i*0.05}s" onclick="openBook(${JSON.stringify(book.id)})">
+      <div class="book-item" style="animation-delay:${i*0.05}s" onclick="openBook('${book.id}')">
         <div class="book-cover" style="background:linear-gradient(160deg,${book.colors[0]},${book.colors[1]})">
           <div class="book-frame"></div>
           <div class="book-frame-inner"></div>
@@ -1100,14 +1100,14 @@ function renderShelf() {
         </div>
         <div class="book-meta-text">
           ${isEssay(book) ? '解説書' : isSpecial(book) ? '特別編' : '第'+book.ch+'章'}${(book.text || book.text_file) ? '' : '　（準備中）'}
-          <button class="tag-edit-btn" onclick="event.stopPropagation();openTagModal(${JSON.stringify(book.id)})">🏷</button>
+          <button class="tag-edit-btn" onclick="event.stopPropagation();openTagModal('${book.id}')">🏷</button>
         </div>
       </div>
     `).join('');
   } else {
     container.className = 'book-list';
     container.innerHTML = filtered.map((book, i) => `
-      <div class="book-list-item" style="animation-delay:${i*0.03}s" onclick="openBook(${JSON.stringify(book.id)})">
+      <div class="book-list-item" style="animation-delay:${i*0.03}s" onclick="openBook('${book.id}')">
         <div class="book-list-swatch" style="background:linear-gradient(160deg,${book.colors[0]},${book.colors[1]})"></div>
         <div class="book-list-body">
           <div class="book-list-title">${book.title}</div>
@@ -1115,7 +1115,7 @@ function renderShelf() {
           ${book.synopsis ? `<div class="book-list-synopsis">${book.synopsis}</div>` : ''}
           ${book.tags && book.tags.length ? `<div class="book-list-tags">${book.tags.map(t => `<span class="tag-chip" onclick="event.stopPropagation();setDetailFilter('${t}')" style="cursor:pointer">#${t}</span>`).join('')}</div>` : ''}
         </div>
-        <button class="tag-edit-btn-list" onclick="event.stopPropagation();openTagModal(${JSON.stringify(book.id)})">🏷</button>
+        <button class="tag-edit-btn-list" onclick="event.stopPropagation();openTagModal('${book.id}')">🏷</button>
       </div>
     `).join('');
   }
@@ -1358,7 +1358,7 @@ async function saveBulkTag() {
 
 // ===== READER =====
 async function openBook(id) {
-  const book = books.find(b => b.id === id);
+  const book = books.find(b => String(b.id) === String(id));
   if (!book) return;
 
   // 特別編: text_file から遅延ロード（キャッシュ済みなら再利用）
